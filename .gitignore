@@ -1,0 +1,14 @@
+# Qoder IDE
+.qoder/
+
+# Node.js
+node_modules/
+package-lock.json
+
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Binary / generated files
+*.log

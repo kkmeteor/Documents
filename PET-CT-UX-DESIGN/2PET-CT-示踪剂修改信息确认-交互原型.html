@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PET-CT 示踪剂双重确认 - 交互原型</title>
+<style>
+  :root {
+    --green: #4CAF50;
+    --green-bg: #E8F5E9;
+    --orange: #FF9800;
+    --orange-bg: #FFF3E0;
+    --orange-light: #FFF8E1;
+    --red: #F44336;
+    --red-bg: #FFEBEE;
+    --blue: #1976D2;
+    --blue-light: #E3F2FD;
+    --gray: #666;
+    --gray-light: #f5f5f5;
+    --border: #ddd;
+    --shadow: 0 2px 8px rgba(0,0,0,0.12);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.2);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f0f2f5;
+    color: #333;
+    min-height: 100vh;
+  }
+
+  /* Top bar */
+  .topbar {
+    background: #fff;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar h1 { font-size: 16px; font-weight: 600; color: #333; }
+  .topbar .user-info { font-size: 13px; color: var(--gray); display: flex; align-items: center; gap: 12px; }
+  .topbar .user-info select {
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 13px;
+    background: #fff;
+  }
+
+  /* Main container */
+  .container {
+    max-width: 900px;
+    margin: 24px auto;
+    padding: 0 16px;
+    position: relative;
+  }
+
+  /* Card */
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-title .status-badge {
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .status-confirmed { background: var(--green-bg); color: var(--green); }
+  .status-pending { background: var(--orange-bg); color: var(--orange); }
+  .status-editing { background: var(--orange-light); color: var(--orange); }
+
+  /* Form grid */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 32px;
+  }
+  .form-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .form-row.full { grid-column: 1 / -1; }
+
+  /* Form controls */
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .field-group label {
+    font-size: 12px;
+    color: var(--gray);
+  }
+  .field-group input,
+  .field-group select {
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: #fff;
+  }
+  .field-group input:focus,
+  .field-group select:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 2px rgba(25,118,210,0.15);
+  }
+  .field-group input.modified {
+    border-color: var(--orange);
+    background: var(--orange-light);
+    box-shadow: 0 0 0 2px rgba(255,152,0,0.15);
+  }
+  .field-group input.confirmed-field {
+    background: var(--gray-light);
+  }
+  .field-hint {
+    font-size: 11px;
+    color: #999;
+  }
+  .dose-unit {
+    font-size: 13px;
+    color: var(--gray);
+    white-space: nowrap;
+  }
+  .input-with-unit {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .input-with-unit input {
+    flex: 1;
+  }
+
+  /* Modified indicator */
+  .modified-indicator {
+    font-size: 14px;
+    color: var(--orange);
+    display: none;
+  }
+  .modified-indicator.show { display: inline; }
+
+  /* Buttons */
+  .btn-row {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+  }
+  .btn {
+    padding: 8px 24px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--blue);
+    color: #fff;
+  }
+  .btn-primary:hover { background: #1565C0; }
+  .btn-secondary {
+    background: #fff;
+    color: var(--gray);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { background: var(--gray-light); }
+  .btn-success {
+    background: var(--green);
+    color: #fff;
+  }
+  .btn-success:hover { background: #388E3C; }
+  .btn-danger {
+    background: #fff;
+    color: var(--red);
+    border: 1px solid var(--red);
+  }
+  .btn-danger:hover { background: var(--red-bg); }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Audit button */
+  .audit-btn {
+    font-size: 13px;
+    color: var(--blue);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: 1px solid var(--blue);
+    padding: 4px 12px;
+    border-radius: 4px;
+    transition: all 0.2s;
+  }
+  .audit-btn:hover { background: var(--blue-light); }
+
+  /* Meta info row */
+  .meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--gray);
+  }
+  .meta-row .signatures {
+    display: flex;
+    gap: 24px;
+  }
+  .meta-row .sig-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .meta-row .sig-item .sig-label { color: #999; }
+  .meta-row .sig-item .sig-name { font-weight: 500; color: #333; }
+
+  /* Modal overlay */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 12px;
+    padding: 32px;
+    width: 560px;
+    max-width: 90vw;
+    box-shadow: var(--shadow-lg);
+    animation: modalIn 0.2s ease-out;
+  }
+  @keyframes modalIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .modal h2 {
+    font-size: 18px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .modal .modal-desc {
+    font-size: 13px;
+    color: var(--gray);
+    margin-bottom: 20px;
+  }
+
+  /* Diff table */
+  .diff-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+    font-size: 14px;
+  }
+  .diff-table th {
+    text-align: left;
+    padding: 8px 12px;
+    background: var(--gray-light);
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--gray);
+    border-bottom: 2px solid var(--border);
+  }
+  .diff-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #eee;
+  }
+  .diff-table .old-val { color: var(--red); text-decoration: line-through; }
+  .diff-table .new-val { color: var(--green); font-weight: 600; }
+  .diff-table .field-name { font-weight: 500; }
+
+  .modal .modifier-info {
+    font-size: 12px;
+    color: var(--gray);
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .modal .form-group {
+    margin-bottom: 16px;
+  }
+  .modal .form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: #333;
+  }
+  .modal .form-group label .hint {
+    font-weight: 400;
+    color: var(--red);
+    font-size: 12px;
+  }
+  .modal .form-group input,
+  .modal .form-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    font-family: inherit;
+  }
+  .modal .form-group input:focus,
+  .modal .form-group textarea:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 2px rgba(25,118,210,0.15);
+  }
+  .modal .form-group textarea { resize: vertical; min-height: 60px; }
+
+  .modal .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  /* Feedback modal */
+  .feedback-icon {
+    font-size: 48px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .feedback-modal .feedback-title {
+    text-align: center;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .feedback-modal .feedback-detail {
+    text-align: center;
+    font-size: 13px;
+    color: var(--gray);
+    margin-bottom: 8px;
+  }
+  .feedback-modal .feedback-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+  }
+
+  /* Audit panel */
+  .audit-panel {
+    display: none;
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 420px;
+    max-width: 90vw;
+    background: #fff;
+    box-shadow: -4px 0 16px rgba(0,0,0,0.1);
+    z-index: 900;
+    overflow-y: auto;
+    animation: slideIn 0.25s ease-out;
+  }
+  .audit-panel.show { display: block; }
+  @keyframes slideIn {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  .audit-panel-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 10;
+  }
+  .audit-panel-header h3 { font-size: 16px; font-weight: 600; }
+  .audit-panel-close {
+    font-size: 20px;
+    cursor: pointer;
+    color: var(--gray);
+    background: none;
+    border: none;
+    padding: 4px 8px;
+  }
+  .audit-panel-close:hover { color: #333; }
+  .audit-list { padding: 16px 24px; }
+  .audit-item {
+    padding: 16px 0;
+    border-bottom: 1px solid #eee;
+  }
+  .audit-item:last-child { border-bottom: none; }
+  .audit-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .audit-item-num {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--blue);
+    background: var(--blue-light);
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .audit-item-time { font-size: 12px; color: var(--gray); }
+  .audit-item-type {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+  }
+  .type-create { background: var(--blue-light); color: var(--blue); }
+  .type-modify { background: var(--orange-bg); color: var(--orange); }
+  .type-confirm { background: var(--green-bg); color: var(--green); }
+  .audit-item-people {
+    font-size: 12px;
+    color: var(--gray);
+    margin-bottom: 8px;
+  }
+  .audit-item-changes {
+    background: var(--gray-light);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+  .audit-item-changes .change-line {
+    padding: 2px 0;
+  }
+  .audit-item-changes .change-arrow { color: var(--orange); margin: 0 4px; }
+  .audit-item-note {
+    font-size: 12px;
+    color: var(--gray);
+    font-style: italic;
+  }
+  .audit-empty {
+    text-align: center;
+    padding: 40px 24px;
+    color: var(--gray);
+    font-size: 14px;
+  }
+
+  /* Audit overlay */
+  .audit-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.2);
+    z-index: 899;
+  }
+  .audit-overlay.show { display: block; }
+
+  /* Scenario selector */
+  .scenario-bar {
+    background: #fff;
+    border-radius: 8px;
+    padding: 12px 24px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .scenario-bar label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+  }
+  .scenario-btn {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: #fff;
+    transition: all 0.2s;
+  }
+  .scenario-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .scenario-btn.active {
+    background: var(--blue);
+    color: #fff;
+    border-color: var(--blue);
+  }
+
+  /* Waiting indicator */
+  .waiting-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--orange);
+  }
+  .waiting-dots::after {
+    content: '';
+    animation: dots 1.5s infinite;
+  }
+  @keyframes dots {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: #333;
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    z-index: 2000;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .toast.success { background: var(--green); }
+  .toast.error { background: var(--red); }
+  .toast.warning { background: var(--orange); }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <h1>PET-CT 示踪剂信息</h1>
+  <div class="user-info">
+    <span>当前用户:</span>
+    <span style="font-weight:500;color:#333">张三 (技师)</span>
+  </div>
+</div>
+
+<!-- Scenario selector -->
+<div class="container">
+  <div class="scenario-bar">
+    <label>场景演示:</label>
+    <button class="scenario-btn active" onclick="setScenario('first')">1. 首次录入</button>
+    <button class="scenario-btn" onclick="setScenario('confirmed')">2. 已确认状态</button>
+    <button class="scenario-btn" onclick="setScenario('editing')">3. 修改确认</button>
+  </div>
+
+  <!-- Patient position card -->
+  <div class="card">
+    <div class="card-title">病人体位</div>
+    <div class="form-grid">
+      <div class="form-row">
+        <div class="field-group" style="flex:1">
+          <label>[体位]</label>
+          <select id="position">
+            <option>仰卧头先进</option>
+            <option>仰卧足先进</option>
+            <option>俯卧头先进</option>
+            <option>俯卧足先进</option>
+            <option>侧卧</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tracer card -->
+  <div class="card">
+    <div class="card-title">
+      <span style="display:flex;align-items:center;gap:12px">
+        示踪剂
+        <span id="statusBadge" class="status-badge status-confirmed">✅ 已确认</span>
+      </span>
+      <button class="audit-btn" onclick="toggleAudit()">📋 审计日志</button>
+    </div>
+
+    <div class="form-grid">
+      <div class="field-group">
+        <label>[核素]</label>
+        <select id="isotope">
+          <option>F18</option>
+          <option>C11</option>
+          <option>Ga68</option>
+          <option>Tc99m</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label>[示踪剂]</label>
+        <select id="tracer">
+          <option>FDG</option>
+          <option>FLT</option>
+          <option>FMISO</option>
+          <option>PSMA</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label>[满针时间]</label>
+        <input type="time" id="fullTime" value="10:48" onchange="onFieldChange()">
+      </div>
+      <div class="field-group">
+        <label>[满针剂量]</label>
+        <div class="input-with-unit">
+          <input type="number" step="0.0001" id="fullDose" value="10" onchange="onFieldChange()">
+          <span class="dose-unit">mCi</span>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>[空针时间]</label>
+        <input type="time" id="emptyTime" value="10:50" onchange="onFieldChange()">
+      </div>
+      <div class="field-group">
+        <label>[空针剂量]</label>
+        <div class="input-with-unit">
+          <input type="number" step="0.0001" id="emptyDose" value="0.1" onchange="onFieldChange()">
+          <span class="dose-unit">mCi</span>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>[注射时间]</label>
+        <input type="time" id="injectTime" value="10:49" onchange="onFieldChange()">
+      </div>
+      <div class="field-group">
+        <label>[注射剂量]</label>
+        <div class="input-with-unit">
+          <input type="number" step="0.0001" id="injectDose" value="9.8364" onchange="onFieldChange()">
+          <span class="dose-unit">mCi</span>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label>[注射日期]</label>
+        <input type="date" id="injectDate" value="2026-06-26">
+      </div>
+    </div>
+
+    <!-- Meta row -->
+    <div class="meta-row" id="metaRow" style="display:none">
+      <div class="signatures">
+        <div class="sig-item">
+          <span class="sig-label">记录人:</span>
+          <span class="sig-name" id="recorderName">张三</span>
+        </div>
+      </div>
+      <span id="metaTime">2026-06-26 10:50</span>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="btn-row" id="btnRow">
+      <button class="btn btn-primary" id="saveBtn" onclick="handleSave()">保存</button>
+      <button class="btn btn-secondary" id="cancelBtn" onclick="handleCancel()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal">
+    <h2>️ 示踪剂信息修改确认</h2>
+    <p class="modal-desc">以下修改确认后将直接生效：</p>
+
+    <table class="diff-table">
+      <thead>
+        <tr>
+          <th>字段</th>
+          <th>修改前</th>
+          <th>修改后</th>
+        </tr>
+      </thead>
+      <tbody id="diffBody">
+      </tbody>
+    </table>
+
+    <div class="modifier-info">
+      <span id="modalModifier">修改人: 张三</span>
+      <span id="modalTime">2026-07-01 06:52</span>
+    </div>
+
+    <hr style="border:none;border-top:1px solid #eee;margin:16px 0">
+
+    <div class="form-group">
+      <label>确认人（可选）</label>
+      <input type="text" id="confirmerName" placeholder="输入确认人姓名">
+    </div>
+
+    <div class="form-group">
+      <label>密码验证（可选）</label>
+      <input type="password" id="confirmerPassword" placeholder="输入确认人密码">
+    </div>
+
+    <div class="form-group">
+      <label>确认备注（可选）</label>
+      <textarea id="confirmNote" placeholder="原因（SUI可配置）&#10;密码验证（SUI可配置）"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-success" id="confirmBtn" onclick="doConfirm()">✅ 确认</button>
+      <button class="btn btn-danger" onclick="doReject()">❌ 拒绝</button>
+    </div>
+  </div>
+</div>
+
+<!-- Feedback Modal -->
+<div class="modal-overlay" id="feedbackModal">
+  <div class="modal feedback-modal">
+    <div class="feedback-icon" id="feedbackIcon">✅</div>
+    <div class="feedback-title" id="feedbackTitle">确认成功</div>
+    <div class="feedback-detail" id="feedbackDetail1"></div>
+    <div class="feedback-detail" id="feedbackDetail2"></div>
+    <div class="feedback-detail" id="feedbackDetail3" style="color:var(--green);font-weight:500"></div>
+    <div class="feedback-actions">
+      <button class="btn btn-primary" onclick="closeFeedback()">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- Audit Panel -->
+<div class="audit-overlay" id="auditOverlay" onclick="toggleAudit()"></div>
+<div class="audit-panel" id="auditPanel">
+  <div class="audit-panel-header">
+    <h3>📋 审计日志</h3>
+    <button class="audit-panel-close" onclick="toggleAudit()">✕</button>
+  </div>
+  <div class="audit-list" id="auditList">
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// State management
+let state = {
+  scenario: 'first', // first, confirmed, editing
+  saved: false,
+  editing: false,
+  originalValues: {},
+  auditLog: [],
+  recordNumber: 0
+};
+
+const fieldIds = ['fullTime', 'fullDose', 'emptyTime', 'emptyDose', 'injectTime', 'injectDose'];
+const fieldLabels = {
+  fullTime: '满针时间', fullDose: '满针剂量',
+  emptyTime: '空针时间', emptyDose: '空针剂量',
+  injectTime: '注射时间', injectDose: '注射剂量'
+};
+
+function saveOriginalValues() {
+  fieldIds.forEach(id => {
+    state.originalValues[id] = document.getElementById(id).value;
+  });
+}
+
+function getModifiedFields() {
+  const modified = [];
+  fieldIds.forEach(id => {
+    const current = document.getElementById(id).value;
+    if (current !== state.originalValues[id]) {
+      modified.push({
+        field: id,
+        label: fieldLabels[id],
+        oldVal: state.originalValues[id],
+        newVal: current
+      });
+    }
+  });
+  return modified;
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type || '');
+  setTimeout(() => { t.className = 'toast'; }, 2500);
+}
+
+function setScenario(scenario) {
+  state.scenario = scenario;
+  document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  // Reset fields to defaults
+  document.getElementById('fullTime').value = '10:48';
+  document.getElementById('fullDose').value = '10';
+  document.getElementById('emptyTime').value = '10:50';
+  document.getElementById('emptyDose').value = '0.1';
+  document.getElementById('injectTime').value = '10:49';
+  document.getElementById('injectDose').value = '9.8364';
+
+  // Clear modified styles
+  fieldIds.forEach(id => {
+    document.getElementById(id).classList.remove('modified');
+    document.getElementById(id).classList.remove('confirmed-field');
+  });
+
+  state.editing = false;
+
+  switch (scenario) {
+    case 'first':
+      state.saved = false;
+      state.auditLog = [];
+      state.recordNumber = 0;
+      break;
+    case 'confirmed':
+      state.saved = true;
+      state.auditLog = [
+        { num: 1, time: '2026-06-26 10:45', type: 'create', typeName: '创建', recorder: '张三', changes: '新建示踪剂记录', note: '' },
+        { num: 2, time: '2026-06-26 10:50', type: 'confirm', typeName: '首次确认', recorder: '张三', changes: '全部字段首次录入', note: '' }
+      ];
+      state.recordNumber = 2;
+      fieldIds.forEach(id => {
+        document.getElementById(id).classList.add('confirmed-field');
+      });
+      break;
+    case 'editing':
+      state.saved = true;
+      state.editing = true;
+      state.auditLog = [
+        { num: 1, time: '2026-06-26 10:45', type: 'create', typeName: '创建', recorder: '张三', changes: '新建示踪剂记录', note: '' },
+        { num: 2, time: '2026-06-26 10:50', type: 'confirm', typeName: '首次确认', recorder: '张三', changes: '全部字段首次录入', note: '' }
+      ];
+      state.recordNumber = 2;
+      saveOriginalValues();
+      // Simulate a modification
+      document.getElementById('injectTime').value = '10:52';
+      document.getElementById('injectDose').value = '9.5';
+      document.getElementById('injectTime').classList.add('modified');
+      document.getElementById('injectDose').classList.add('modified');
+      break;
+  }
+
+  updateUI();
+}
+
+function updateUI() {
+  const badge = document.getElementById('statusBadge');
+  const metaRow = document.getElementById('metaRow');
+  const btnRow = document.getElementById('btnRow');
+  const saveBtn = document.getElementById('saveBtn');
+  const cancelBtn = document.getElementById('cancelBtn');
+
+  switch (state.scenario) {
+    case 'first':
+      badge.className = 'status-badge';
+      badge.style.display = 'none';
+      metaRow.style.display = 'none';
+      btnRow.style.display = 'flex';
+      saveBtn.textContent = '保存';
+      saveBtn.className = 'btn btn-primary';
+      cancelBtn.style.display = 'inline-block';
+      break;
+
+    case 'confirmed':
+      badge.className = 'status-badge status-confirmed';
+      badge.textContent = '✅ 已确认';
+      badge.style.display = 'inline-flex';
+      metaRow.style.display = 'flex';
+      btnRow.style.display = 'flex';
+      saveBtn.textContent = '修改';
+      saveBtn.className = 'btn btn-primary';
+      cancelBtn.style.display = 'inline-block';
+      document.getElementById('recorderName').textContent = '张三';
+      break;
+
+    case 'editing':
+      badge.className = 'status-badge status-editing';
+      badge.textContent = '️ 修改中';
+      badge.style.display = 'inline-flex';
+      metaRow.style.display = 'flex';
+      btnRow.style.display = 'flex';
+      saveBtn.textContent = '提交确认';
+      saveBtn.className = 'btn btn-primary';
+      cancelBtn.style.display = 'inline-block';
+      break;
+  }
+}
+
+function onFieldChange() {
+  if (state.scenario === 'confirmed' && !state.editing) {
+    state.editing = true;
+    state.scenario = 'editing';
+    saveOriginalValues();
+  }
+  if (state.scenario === 'editing') {
+    // Highlight modified fields
+    fieldIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el.value !== state.originalValues[id]) {
+        el.classList.add('modified');
+      } else {
+        el.classList.remove('modified');
+      }
+    });
+  }
+  updateUI();
+}
+
+function handleSave() {
+  if (state.scenario === 'first') {
+    // First save - direct save
+    state.saved = true;
+    state.recordNumber++;
+    const now = new Date();
+    const timeStr = now.toISOString().slice(0, 16).replace('T', ' ');
+    state.auditLog.push({
+      num: state.recordNumber,
+      time: timeStr,
+      type: 'create',
+      typeName: '创建',
+      recorder: '张三',
+      changes: '新建示踪剂记录',
+      note: ''
+    });
+    state.recordNumber++;
+    state.auditLog.push({
+      num: state.recordNumber,
+      time: timeStr,
+      type: 'confirm',
+      typeName: '首次保存',
+      recorder: '张三',
+      changes: '全部字段首次录入',
+      note: ''
+    });
+    showToast('保存成功！', 'success');
+    state.scenario = 'confirmed';
+    updateUI();
+  } else if (state.scenario === 'confirmed') {
+    // Enter edit mode
+    state.editing = true;
+    state.scenario = 'editing';
+    saveOriginalValues();
+    showToast('已进入编辑模式，修改后点击"提交确认"', 'warning');
+    updateUI();
+  } else if (state.scenario === 'editing') {
+    // Submit for confirmation
+    const modified = getModifiedFields();
+    if (modified.length === 0) {
+      showToast('没有检测到修改', 'warning');
+      return;
+    }
+
+    // Populate diff table
+    const diffBody = document.getElementById('diffBody');
+    diffBody.innerHTML = '';
+    modified.forEach(m => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="field-name">${m.label}</td>
+        <td class="old-val">${m.oldVal}${m.field.includes('Dose') ? ' mCi' : ''}</td>
+        <td class="new-val">${m.newVal}${m.field.includes('Dose') ? ' mCi' : ''} ✏️</td>
+      `;
+      diffBody.appendChild(tr);
+    });
+
+    document.getElementById('modalModifier').textContent = '修改人: 张三';
+    const now = new Date();
+    document.getElementById('modalTime').textContent = now.toISOString().slice(0, 16).replace('T', ' ');
+    document.getElementById('confirmNote').value = '';
+    document.getElementById('confirmerName').value = '';
+    document.getElementById('confirmerPassword').value = '';
+
+    document.getElementById('confirmModal').classList.add('show');
+  }
+}
+
+function handleCancel() {
+  if (state.scenario === 'editing') {
+    // Restore original values
+    fieldIds.forEach(id => {
+      document.getElementById(id).value = state.originalValues[id];
+      document.getElementById(id).classList.remove('modified');
+    });
+    state.editing = false;
+    state.scenario = 'confirmed';
+    showToast('已取消修改，数据已恢复', '');
+    updateUI();
+  } else {
+    showToast('已取消', '');
+  }
+}
+
+function doConfirm() {
+  const note = document.getElementById('confirmNote').value.trim();
+  const confirmer = document.getElementById('confirmerName').value.trim();
+  const password = document.getElementById('confirmerPassword').value.trim();
+  const now = new Date();
+  const timeStr = now.toISOString().slice(0, 16).replace('T', ' ');
+
+  const modified = getModifiedFields();
+  const changesStr = modified.map(m =>
+    `${m.label}: ${m.oldVal}${m.field.includes('Dose') ? ' mCi' : ''} → ${m.newVal}${m.field.includes('Dose') ? ' mCi' : ''}`
+  ).join('; ');
+
+  state.recordNumber++;
+  state.auditLog.push({
+    num: state.recordNumber,
+    time: timeStr,
+    type: 'modify',
+    typeName: '修改',
+    recorder: '张三',
+    confirmer: confirmer || '',
+    password: password ? '***' : '',
+    changes: changesStr,
+    note: note
+  });
+
+  document.getElementById('confirmModal').classList.remove('show');
+
+  // Show success feedback
+  document.getElementById('feedbackIcon').textContent = '✅';
+  document.getElementById('feedbackTitle').textContent = '确认成功';
+  document.getElementById('feedbackDetail1').textContent = '操作人: 张三' + (confirmer ? ' | 确认人: ' + confirmer : '');
+  document.getElementById('feedbackDetail2').textContent = '确认时间: ' + timeStr;
+  document.getElementById('feedbackDetail3').textContent = '修改已生效，审计记录已更新。';
+  document.getElementById('feedbackModal').classList.add('show');
+
+  // Update state
+  fieldIds.forEach(id => {
+    document.getElementById(id).classList.remove('modified');
+    document.getElementById(id).classList.add('confirmed-field');
+  });
+  state.originalValues = {};
+  fieldIds.forEach(id => {
+    state.originalValues[id] = document.getElementById(id).value;
+  });
+  state.editing = false;
+  state.scenario = 'confirmed';
+}
+
+function doReject() {
+  const note = document.getElementById('confirmNote').value.trim();
+  const confirmer = document.getElementById('confirmerName').value.trim();
+  document.getElementById('confirmModal').classList.remove('show');
+
+  // Show reject feedback
+  document.getElementById('feedbackIcon').textContent = '❌';
+  document.getElementById('feedbackTitle').textContent = '修改已取消';
+  document.getElementById('feedbackDetail1').textContent = '操作人: 张三' + (confirmer ? ' | 确认人: ' + confirmer : '');
+  document.getElementById('feedbackDetail2').textContent = note ? '原因: ' + note : '';
+  document.getElementById('feedbackDetail3').textContent = '数据已恢复为修改前的值。';
+  document.getElementById('feedbackDetail3').style.color = 'var(--red)';
+  document.getElementById('feedbackModal').classList.add('show');
+
+  // Restore original values
+  fieldIds.forEach(id => {
+    document.getElementById(id).value = state.originalValues[id];
+    document.getElementById(id).classList.remove('modified');
+    document.getElementById(id).classList.add('confirmed-field');
+  });
+  state.editing = false;
+  state.scenario = 'confirmed';
+}
+
+function closeFeedback() {
+  document.getElementById('feedbackModal').classList.remove('show');
+  updateUI();
+}
+
+function toggleAudit() {
+  const panel = document.getElementById('auditPanel');
+  const overlay = document.getElementById('auditOverlay');
+  const isOpen = panel.classList.contains('show');
+
+  if (isOpen) {
+    panel.classList.remove('show');
+    overlay.classList.remove('show');
+  } else {
+    renderAuditLog();
+    panel.classList.add('show');
+    overlay.classList.add('show');
+  }
+}
+
+function renderAuditLog() {
+  const list = document.getElementById('auditList');
+
+  if (state.auditLog.length === 0) {
+    list.innerHTML = '<div class="audit-empty">暂无修改记录</div>';
+    return;
+  }
+
+  let html = '';
+  const reversed = [...state.auditLog].reverse();
+  reversed.forEach(item => {
+    html += `
+      <div class="audit-item">
+        <div class="audit-item-header">
+          <span class="audit-item-num">#${item.num}</span>
+          <span class="audit-item-time">${item.time}</span>
+          <span class="audit-item-type type-${item.type}">${item.typeName}</span>
+        </div>
+        <div class="audit-item-people">
+          操作人: ${item.recorder}${item.confirmer ? ' | 确认人: ' + item.confirmer : ''}
+        </div>
+        <div class="audit-item-changes">
+          ${item.changes.split(';').map(c => {
+            const parts = c.trim().split('→');
+            if (parts.length === 2) {
+              return `<div class="change-line">${parts[0].trim()}<span class="change-arrow"> → </span>${parts[1].trim()}</div>`;
+            }
+            return `<div class="change-line">${c.trim()}</div>`;
+          }).join('')}
+        </div>
+        ${item.note ? `<div class="audit-item-note">备注: ${item.note}</div>` : ''}
+      </div>
+    `;
+  });
+
+  list.innerHTML = html;
+}
+
+// Initialize
+saveOriginalValues();
+updateUI();
+</script>
+</body>
+</html>

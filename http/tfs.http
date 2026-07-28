@@ -1,0 +1,21 @@
+GET http://desktop-ois99mh:5000/tfs
+Content-Type: application/json
+
+###
+
+GET http://localhost:9000/api/tfs/health
+Content-Type: application/json
+###
+
+###
+
+POST http://localhost:9000/api/changesethistory/query
+Content-Type: application/json
+
+{
+    "TfsUrl": "http://10.10.10.63:8080/tfs/DefaultCollection",
+    "SourcePath": "$/PET-CT Software Project/PET-CT flight",
+    "StartDate": "2026-01-01",
+    "EndDate": "2026-05-31"
+}
+###

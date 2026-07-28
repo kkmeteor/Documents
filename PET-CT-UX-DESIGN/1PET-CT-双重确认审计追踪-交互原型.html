@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PET-CT 病人数据编辑 — 双重确认与审计追踪 UX原型</title>
+<style>
+  :root {
+    --blue: #3B82F6;
+    --blue-hover: #2563EB;
+    --green: #10B981;
+    --green-hover: #059669;
+    --orange: #F59E0B;
+    --red: #EF4444;
+    --text-primary: #1F2937;
+    --text-secondary: #6B7280;
+    --text-muted: #9CA3AF;
+    --border: #E5E7EB;
+    --bg-light: #F3F4F6;
+    --bg-lighter: #F9FAFB;
+    --bg-white: #FFFFFF;
+    --overlay: rgba(0,0,0,0.45);
+    --shadow-modal: 0 4px 16px rgba(0,0,0,0.12);
+    --shadow-toast: 0 4px 12px rgba(0,0,0,0.1);
+    --radius: 8px;
+    --radius-sm: 6px;
+    --radius-xs: 4px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: #F0F2F5; color: var(--text-primary); font-size: 14px; line-height: 1.5; }
+
+  /* ===== Data Browse Screen ===== */
+  .browse-screen { padding: 24px; max-width: 1200px; margin: 0 auto; }
+  .browse-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .browse-header h1 { font-size: 20px; font-weight: 600; }
+  .browse-toolbar { display: flex; gap: 12px; align-items: center; }
+  .search-box { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; width: 240px; }
+  .btn { padding: 8px 20px; border-radius: var(--radius-sm); font-size: 14px; cursor: pointer; border: 1px solid transparent; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-primary { background: var(--blue); color: white; border-color: var(--blue); }
+  .btn-primary:hover { background: var(--blue-hover); }
+  .btn-success { background: var(--green); color: white; border-color: var(--green); }
+  .btn-success:hover { background: var(--green-hover); }
+  .btn-secondary { background: white; color: var(--text-secondary); border-color: var(--border); }
+  .btn-secondary:hover { background: var(--bg-light); }
+  .btn-danger-text { background: none; color: var(--red); border: none; padding: 4px 8px; font-size: 13px; }
+  .btn-danger-text:hover { text-decoration: underline; }
+  .btn-link { background: none; color: var(--blue); border: none; padding: 0; font-size: 13px; cursor: pointer; }
+  .btn-link:hover { text-decoration: underline; }
+
+  .data-table { width: 100%; background: white; border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .data-table th { background: var(--bg-light); padding: 12px 16px; text-align: left; font-size: 13px; font-weight: 500; color: var(--text-secondary); border-bottom: 1px solid var(--border); }
+  .data-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--bg-lighter); }
+  .status-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+  .status-completed { background: #D1FAE5; color: #065F46; }
+  .status-pending { background: #FEF3C7; color: #92400E; }
+  .version-tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; background: #DBEAFE; color: #1E40AF; margin-left: 6px; }
+  .action-links { display: flex; gap: 8px; }
+
+  /* ===== Edit Modal ===== */
+  .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--overlay); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-overlay.active { opacity: 1; pointer-events: auto; }
+  .modal { background: white; border-radius: var(--radius); box-shadow: var(--shadow-modal); width: 720px; max-height: 90vh; overflow-y: auto; transform: translateY(20px); transition: transform 0.2s; }
+  .modal-overlay.active .modal { transform: translateY(0); }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px 16px; border-bottom: 1px solid var(--border); }
+  .modal-header h2 { font-size: 18px; font-weight: 600; }
+  .modal-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); padding: 4px; }
+  .modal-close:hover { color: var(--text-primary); }
+  .modal-body { padding: 24px; }
+  .modal-footer { padding: 16px 24px 24px; display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--border); }
+
+  /* Form Styles */
+  .form-section { margin-bottom: 24px; }
+  .form-section-title { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid var(--blue); display: inline-block; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .form-group { display: flex; align-items: center; gap: 8px; position: relative; }
+  .form-group label { font-size: 14px; color: var(--text-secondary); min-width: 72px; text-align: right; flex-shrink: 0; }
+  .form-group input, .form-group select { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-xs); font-size: 14px; transition: border-color 0.15s, box-shadow 0.15s; }
+  .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+  .form-group .unit { font-size: 13px; color: var(--text-muted); min-width: 40px; }
+
+  /* Modified field indicator */
+  .form-group.modified::before { content: ''; position: absolute; left: -12px; top: 4px; bottom: 4px; width: 3px; background: var(--orange); border-radius: 2px; }
+  .form-group.modified input, .form-group.modified select { border-color: var(--orange); background: #FFFBEB; }
+
+  .modified-count { text-align: center; font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+  .modified-count span { color: var(--orange); font-weight: 600; }
+
+  /* ===== Confirmation Dialogs ===== */
+  .confirm-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--overlay); z-index: 200; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .confirm-overlay.active { opacity: 1; pointer-events: auto; }
+  .confirm-dialog { background: white; border-radius: var(--radius); box-shadow: 0 8px 32px rgba(0,0,0,0.18); transform: scale(0.95); transition: transform 0.2s; }
+  .confirm-overlay.active .confirm-dialog { transform: scale(1); }
+  .confirm-dialog.step1 { width: 480px; }
+  .confirm-dialog.step2 { width: 640px; }
+  .confirm-header { padding: 20px 24px 16px; display: flex; align-items: center; gap: 10px; }
+  .confirm-header .icon { font-size: 22px; }
+  .confirm-header h3 { font-size: 16px; font-weight: 600; }
+  .confirm-body { padding: 0 24px 20px; }
+  .confirm-footer { padding: 16px 24px 24px; display: flex; justify-content: flex-end; gap: 12px; }
+
+  .confirm-info { font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.6; }
+  .patient-info-block { background: var(--bg-lighter); border-radius: var(--radius-xs); padding: 12px 16px; margin-bottom: 16px; }
+  .patient-info-block .info-row { font-size: 13px; color: var(--text-primary); margin-bottom: 4px; }
+  .patient-info-block .info-row:last-child { margin-bottom: 0; }
+  .patient-info-block .info-label { color: var(--text-muted); margin-right: 8px; }
+
+  .change-summary { margin-bottom: 16px; }
+  .change-summary-title { font-size: 14px; font-weight: 500; margin-bottom: 8px; color: var(--text-primary); }
+  .change-summary-title .count { color: var(--orange); }
+  .change-item { font-size: 14px; padding: 4px 0; display: flex; align-items: center; gap: 4px; }
+  .change-item .field-name { color: var(--text-primary); min-width: 60px; }
+  .change-item .old-value { color: var(--red); text-decoration: line-through; }
+  .change-item .arrow { color: var(--text-muted); margin: 0 4px; }
+  .change-item .new-value { color: var(--green); font-weight: 600; }
+  .change-item .added { color: var(--green); font-weight: 600; }
+
+  .audit-notice { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; padding: 8px 0; border-top: 1px solid var(--border); }
+
+  /* Step 2: Comparison Table */
+  .compare-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+  .compare-table th { background: var(--bg-light); padding: 10px 16px; text-align: left; font-size: 13px; font-weight: 500; color: var(--text-secondary); border-bottom: 2px solid var(--border); }
+  .compare-table td { padding: 10px 16px; font-size: 14px; border-bottom: 1px solid var(--border); }
+  .compare-table tr:nth-child(even) td { background: var(--bg-lighter); }
+  .compare-table .old-val { color: var(--red); }
+  .compare-table .new-val { color: var(--green); font-weight: 600; }
+  .compare-table .change-type { font-size: 12px; }
+  .type-modified { color: var(--orange); }
+  .type-added { color: var(--green); }
+
+  .new-id-notice { font-size: 13px; color: var(--blue); display: flex; align-items: center; gap: 6px; background: #EFF6FF; padding: 10px 14px; border-radius: var(--radius-xs); border: 1px solid #BFDBFE; }
+
+  /* ===== Toast ===== */
+  .toast-container { position: fixed; top: 24px; right: 24px; z-index: 300; display: flex; flex-direction: column; gap: 8px; }
+  .toast { background: white; border-radius: var(--radius-sm); box-shadow: var(--shadow-toast); padding: 16px 20px; min-width: 360px; border-left: 4px solid var(--green); transform: translateX(120%); transition: transform 0.3s ease; }
+  .toast.show { transform: translateX(0); }
+  .toast.error { border-left-color: var(--red); }
+  .toast-title { font-size: 14px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+  .toast-message { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  .toast-link { font-size: 13px; color: var(--blue); cursor: pointer; margin-top: 6px; display: inline-block; }
+  .toast-link:hover { text-decoration: underline; }
+
+  /* ===== Change History Page ===== */
+  .history-screen { padding: 24px; max-width: 900px; margin: 0 auto; display: none; }
+  .history-screen.active { display: block; }
+  .browse-screen.hidden { display: none; }
+  .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+  .history-header h1 { font-size: 20px; font-weight: 600; }
+  .history-header .subtitle { font-size: 14px; color: var(--text-secondary); margin-top: 2px; }
+
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before { content: ''; position: absolute; left: 7px; top: 8px; bottom: 8px; width: 2px; background: var(--border); }
+  .timeline-item { position: relative; margin-bottom: 16px; }
+  .timeline-dot { position: absolute; left: -24px; top: 16px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 0 2px var(--border); }
+  .timeline-dot.current { background: var(--blue); box-shadow: 0 0 0 2px var(--blue); }
+  .timeline-dot.original { background: var(--green); box-shadow: 0 0 0 2px var(--green); }
+  .timeline-card { background: white; border-radius: var(--radius-sm); border: 1px solid var(--border); padding: 16px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); }
+  .timeline-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+  .timeline-card-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .timeline-card-time { font-size: 13px; color: var(--text-muted); }
+  .timeline-card-meta { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+  .timeline-card-meta .version-link { color: var(--blue); cursor: pointer; }
+  .timeline-card-meta .version-link:hover { text-decoration: underline; }
+  .timeline-card-summary { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+  .expand-btn { font-size: 13px; color: var(--blue); cursor: pointer; background: none; border: none; display: flex; align-items: center; gap: 4px; }
+  .expand-btn:hover { text-decoration: underline; }
+
+  /* Detail Panel */
+  .detail-panel { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); display: none; }
+  .detail-panel.show { display: block; }
+  .detail-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .detail-info-item { font-size: 13px; }
+  .detail-info-item .label { color: var(--text-muted); }
+  .detail-info-item .value { color: var(--text-primary); }
+  .detail-info-item .value.link { color: var(--blue); cursor: pointer; }
+  .detail-info-item .value.link:hover { text-decoration: underline; }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* ===== Navigation Breadcrumb ===== */
+  .breadcrumb { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+  .breadcrumb a { color: var(--blue); text-decoration: none; cursor: pointer; }
+  .breadcrumb a:hover { text-decoration: underline; }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 768px) {
+    .form-row { grid-template-columns: 1fr; }
+    .modal { width: 95%; margin: 16px; }
+    .confirm-dialog.step1, .confirm-dialog.step2 { width: 95%; margin: 16px; }
+    .detail-info-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ===== Animations ===== */
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes slideUp { from { transform: translateY(10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .fade-in { animation: fadeIn 0.2s ease; }
+  .slide-up { animation: slideUp 0.3s ease; }
+
+  /* ===== Prototype Navigation ===== */
+  .proto-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #1F2937; color: white; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; z-index: 50; font-size: 13px; }
+  .proto-nav .step-indicator { display: flex; gap: 6px; align-items: center; }
+  .proto-nav .step-dot { width: 8px; height: 8px; border-radius: 50%; background: #4B5563; transition: background 0.2s; }
+  .proto-nav .step-dot.active { background: var(--blue); }
+  .proto-nav .step-label { color: #9CA3AF; margin-left: 8px; }
+  .proto-nav button { background: #374151; color: white; border: 1px solid #4B5563; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+  .proto-nav button:hover { background: #4B5563; }
+  body { padding-bottom: 44px; }
+</style>
+</head>
+<body>
+
+<!-- ===== Screen 1: Data Browse ===== -->
+<div class="browse-screen" id="browseScreen">
+  <div class="browse-header">
+    <div>
+      <h1>PET-CT 检查数据</h1>
+    </div>
+    <div class="browse-toolbar">
+      <input type="text" class="search-box" placeholder="搜索病人姓名/序号...">
+      <button class="btn btn-primary" onclick="openEditModal()">编辑</button>
+    </div>
+  </div>
+
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>病人序号</th>
+        <th>姓名</th>
+        <th>性别</th>
+        <th>年龄</th>
+        <th>检查时间</th>
+        <th>示踪剂</th>
+        <th>状态</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>E202606261228 <span class="version-tag">原始</span></td>
+        <td>XXX002</td>
+        <td>女</td>
+        <td>40</td>
+        <td>2026/6/26 12:28</td>
+        <td>F18-FDG</td>
+        <td><span class="status-badge status-completed">已完成</span></td>
+        <td>
+          <div class="action-links">
+            <button class="btn-link" onclick="openEditModal()">编辑</button>
+            <button class="btn-link" onclick="showHistory()">变更历史</button>
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <td>E202606251015</td>
+        <td>XXX001</td>
+        <td>男</td>
+        <td>55</td>
+        <td>2026/6/25 10:15</td>
+        <td>F18-FDG</td>
+        <td><span class="status-badge status-completed">已完成</span></td>
+        <td>
+          <div class="action-links">
+            <button class="btn-link">编辑</button>
+            <button class="btn-link">变更历史</button>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== Screen 5: Change History ===== -->
+<div class="history-screen" id="historyScreen">
+  <div class="breadcrumb">
+    <a onclick="hideHistory()">检查数据</a>
+    <span>›</span>
+    <span>变更历史</span>
+  </div>
+  <div class="history-header">
+    <div>
+      <h1>变更历史</h1>
+      <div class="subtitle">XXX002 — E202606261228</div>
+    </div>
+    <button class="btn btn-secondary" onclick="hideHistory()">返回</button>
+  </div>
+
+  <div class="timeline">
+    <!-- Version 1 (current) -->
+    <div class="timeline-item">
+      <div class="timeline-dot current"></div>
+      <div class="timeline-card">
+        <div class="timeline-card-header">
+          <div class="timeline-card-title">数据修改 — 3个字段变更</div>
+          <div class="timeline-card-time">2026/6/26 14:30:25</div>
+        </div>
+        <div class="timeline-card-meta">
+          操作人：<strong>张三</strong>（工号001）&nbsp;&nbsp;|&nbsp;&nbsp;
+          <span class="version-link" onclick="alert('跳转到原始版本 E202606261228')">E202606261228</span>
+          →
+          <span class="version-link" onclick="alert('跳转到版本1 E202606261228-V1')">E202606261228-V1（版本1）</span>
+        </div>
+        <div class="timeline-card-summary">
+          身高: 1→165 cm &nbsp;|&nbsp; 体重: 1→55 kg &nbsp;|&nbsp; 血糖: →5.6 mmol/L
+        </div>
+        <button class="expand-btn" onclick="toggleDetail(this)">
+          展开详情 <span class="expand-arrow">▼</span>
+        </button>
+        <div class="detail-panel">
+          <div class="detail-info-grid">
+            <div class="detail-info-item"><span class="label">操作人：</span><span class="value">张三（工号001）</span></div>
+            <div class="detail-info-item"><span class="label">操作时间：</span><span class="value">2026/6/26 14:30:25</span></div>
+            <div class="detail-info-item"><span class="label">原始版本：</span><span class="value link" onclick="alert('跳转到 E202606261228')">E202606261228 →</span></div>
+            <div class="detail-info-item"><span class="label">新版本：</span><span class="value link" onclick="alert('跳转到 E202606261228-V1')">E202606261228-V1 →</span></div>
+          </div>
+          <table class="compare-table">
+            <thead>
+              <tr><th>字段</th><th>修改前</th><th>修改后</th><th>变更类型</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>身高</td><td class="old-val">1 cm</td><td class="new-val">165 cm</td><td><span class="change-type type-modified">修改</span></td></tr>
+              <tr><td>体重</td><td class="old-val">1 kg</td><td class="new-val">55 kg</td><td><span class="change-type type-modified">修改</span></td></tr>
+              <tr><td>血糖</td><td class="old-val">—</td><td class="new-val">5.6 mmol/L</td><td><span class="change-type type-added">新增</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Original -->
+    <div class="timeline-item">
+      <div class="timeline-dot original"></div>
+      <div class="timeline-card">
+        <div class="timeline-card-header">
+          <div class="timeline-card-title">创建检查记录</div>
+          <div class="timeline-card-time">2026/6/26 12:28:00</div>
+        </div>
+        <div class="timeline-card-meta">
+          操作人：<strong>系统</strong>&nbsp;&nbsp;|&nbsp;&nbsp;
+          初始版本 <span class="version-link">E202606261228</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Edit Modal ===== -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>编辑</h2>
+      <button class="modal-close" onclick="closeEditModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <!-- Patient Info Section -->
+      <div class="form-section">
+        <div class="form-section-title">病人信息</div>
+        <div class="form-row">
+          <div class="form-group" id="fg-name">
+            <label>姓名：</label>
+            <input type="text" value="XXX002" data-original="XXX002" onchange="checkModified(this)">
+          </div>
+          <div class="form-group" id="fg-pid">
+            <label>病人序号：</label>
+            <input type="text" value="E202606261228" readonly style="background:#F3F4F6;color:#6B7280;">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" id="fg-record">
+            <label>记录号：</label>
+            <input type="text" value="" data-original="" onchange="checkModified(this)">
+          </div>
+          <div class="form-group" id="fg-dob">
+            <label>出生日期：</label>
+            <input type="text" value="1986/6/26" data-original="1986/6/26" onchange="checkModified(this)">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" id="fg-gender">
+            <label>性别：</label>
+            <select data-original="女" onchange="checkModified(this)">
+              <option value="女" selected>女</option>
+              <option value="男">男</option>
+            </select>
+          </div>
+          <div class="form-group" id="fg-age">
+            <label>年龄：</label>
+            <input type="text" value="40" data-original="40" onchange="checkModified(this)">
+            <span class="unit">岁</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group modified" id="fg-height">
+            <label>身高：</label>
+            <input type="text" value="165" data-original="1" onchange="checkModified(this)">
+            <span class="unit">cm</span>
+          </div>
+          <div class="form-group modified" id="fg-weight">
+            <label>体重：</label>
+            <input type="text" value="55" data-original="1" onchange="checkModified(this)">
+            <span class="unit">kg</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group modified" id="fg-sugar">
+            <label>血糖：</label>
+            <input type="text" value="5.6" data-original="" onchange="checkModified(this)">
+            <span class="unit">mmol/L</span>
+          </div>
+          <div class="form-group" id="fg-doctor">
+            <label>开单医生：</label>
+            <select data-original="" onchange="checkModified(this)">
+              <option value="">请选择</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" id="fg-operator">
+            <label>操作人员：</label>
+            <select data-original="" onchange="checkModified(this)">
+              <option value="">请选择</option>
+            </select>
+          </div>
+          <div class="form-group" id="fg-desc">
+            <label>检查描述：</label>
+            <select data-original="" onchange="checkModified(this)">
+              <option value="">请选择</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" id="fg-examtime">
+            <label>检查时间：</label>
+            <input type="text" value="2026/6/26 12:28" data-original="2026/6/26 12:28" onchange="checkModified(this)">
+          </div>
+          <div></div>
+        </div>
+      </div>
+
+      <!-- Tracer Section -->
+      <div class="form-section">
+        <div class="form-section-title">示踪剂</div>
+        <div class="form-row">
+          <div class="form-group" id="fg-isotope">
+            <label>核素：</label>
+            <select data-original="F18" onchange="checkModified(this)">
+              <option value="F18" selected>F18</option>
+            </select>
+          </div>
+          <div class="form-group" id="fg-tracer">
+            <label>示踪剂：</label>
+            <select data-original="FDG" onchange="checkModified(this)">
+              <option value="FDG" selected>FDG</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" id="fg-filltime">
+            <label>满针时间：</label>
+            <input type="text" value="9:25" data-original="9:25" onchange="checkModified(this)">
+          </div>
+          <div class="form-group" id="fg-filldose">
+            <label>满针剂量：</label>
+            <input type="text" value="10" data-original="10" onchange="checkModified(this)">
+            <span class="unit">mCi</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" id="fg-injtime">
+            <label>注射时间：</label>
+            <input type="text" value="9:26" data-original="9:26" onchange="checkModified(this)">
+          </div>
+          <div class="form-group" id="fg-injdose">
+            <label>注射剂量：</label>
+            <input type="text" value="9.8364" data-original="9.8364" onchange="checkModified(this)">
+            <span class="unit">mCi</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" id="fg-empttime">
+            <label>空针时间：</label>
+            <input type="text" value="9:27" data-original="9:27" onchange="checkModified(this)">
+          </div>
+          <div class="form-group" id="fg-empdose">
+            <label>空针剂量：</label>
+            <input type="text" value="0.1" data-original="0.1" onchange="checkModified(this)">
+            <span class="unit">mCi</span>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group" id="fg-injdate">
+            <label>注射日期：</label>
+            <input type="text" value="2026/6/26" data-original="2026/6/26" onchange="checkModified(this)">
+          </div>
+          <div></div>
+        </div>
+      </div>
+
+      <div class="modified-count">已修改 <span id="modifiedCount">3</span> 个字段</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeEditModal()">取消</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="openStep1()">保存并确认</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Step 1: Intent Confirmation ===== -->
+<div class="confirm-overlay" id="confirmStep1">
+  <div class="confirm-dialog step1">
+    <div class="confirm-header">
+      <span class="icon">️</span>
+      <h3>确认修改病人数据</h3>
+    </div>
+    <div class="confirm-body">
+      <p class="confirm-info">您即将修改以下病人数据，系统将自动创建新版本，原始数据将保持不变。</p>
+      <div class="patient-info-block">
+        <div class="info-row"><span class="info-label">病人序号：</span>E202606261228</div>
+        <div class="info-row"><span class="info-label">病人姓名：</span>XXX002</div>
+        <div class="info-row"><span class="info-label">检查时间：</span>2026/6/26 12:28</div>
+      </div>
+      <div class="change-summary">
+        <div class="change-summary-title">修改内容摘要（<span class="count">3</span>项）：</div>
+        <div class="change-item">
+          <span class="field-name">身高：</span>
+          <span class="old-value">1 cm</span>
+          <span class="arrow">→</span>
+          <span class="new-value">165 cm</span>
+        </div>
+        <div class="change-item">
+          <span class="field-name">体重：</span>
+          <span class="old-value">1 kg</span>
+          <span class="arrow">→</span>
+          <span class="new-value">55 kg</span>
+        </div>
+        <div class="change-item">
+          <span class="field-name">血糖：</span>
+          <span class="old-value">—</span>
+          <span class="arrow">→</span>
+          <span class="added">5.6 mmol/L</span>
+        </div>
+      </div>
+      <div class="audit-notice">
+        🔒 本次修改将被完整记录到审计日志中
+      </div>
+    </div>
+    <div class="confirm-footer">
+      <button class="btn btn-secondary" onclick="closeStep1()">取消</button>
+      <button class="btn btn-primary" onclick="openStep2()">确认，继续核对 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Step 2: Content Verification ===== -->
+<div class="confirm-overlay" id="confirmStep2">
+  <div class="confirm-dialog step2">
+    <div class="confirm-header">
+      <span class="icon">📋</span>
+      <h3>核对变更内容</h3>
+    </div>
+    <div class="confirm-body">
+      <p class="confirm-info">请仔细核对以下变更，确认无误后点击"最终确认保存"。</p>
+      <table class="compare-table">
+        <thead>
+          <tr><th>字段</th><th>修改前</th><th>修改后</th><th>变更类型</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>身高</td>
+            <td class="old-val">1 cm</td>
+            <td class="new-val">165 cm ▲</td>
+            <td><span class="change-type type-modified">修改</span></td>
+          </tr>
+          <tr>
+            <td>体重</td>
+            <td class="old-val">1 kg</td>
+            <td class="new-val">55 kg ▲</td>
+            <td><span class="change-type type-modified">修改</span></td>
+          </tr>
+          <tr>
+            <td>血糖</td>
+            <td class="old-val">—</td>
+            <td class="new-val">5.6 mmol/L ▲</td>
+            <td><span class="change-type type-added">新增</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="new-id-notice">
+        ℹ️ 新版本号：<strong>E202606261228-V1</strong>（版本1）— 原始数据 E202606261228 保持不变
+      </div>
+    </div>
+    <div class="confirm-footer">
+      <button class="btn btn-secondary" onclick="closeStep2()">返回修改</button>
+      <button class="btn btn-success" id="finalSaveBtn" onclick="finalSave()">最终确认保存 ✓</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Toast Container ===== -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ===== Prototype Navigation ===== -->
+<div class="proto-nav">
+  <div class="step-indicator">
+    <div class="step-dot active" id="dot-0"></div>
+    <div class="step-dot" id="dot-1"></div>
+    <div class="step-dot" id="dot-2"></div>
+    <div class="step-dot" id="dot-3"></div>
+    <div class="step-dot" id="dot-4"></div>
+    <div class="step-dot" id="dot-5"></div>
+    <span class="step-label" id="stepLabel">数据浏览界面</span>
+  </div>
+  <div>
+    <button onclick="prevStep()"> 上一步</button>
+    <button onclick="nextStep()">下一步 ▶</button>
+  </div>
+</div>
+
+<script>
+  // ===== State Management =====
+  let currentStep = 0;
+  const stepLabels = ['数据浏览界面', '编辑表单（已修改字段高亮）', '第一次确认：意图确认', '第二次确认：内容核对', '保存成功 Toast', '变更历史页面'];
+
+  function setStep(n) {
+    currentStep = n;
+    document.querySelectorAll('.step-dot').forEach((d, i) => d.classList.toggle('active', i === n));
+    document.getElementById('stepLabel').textContent = stepLabels[n];
+
+    // Reset all overlays
+    document.getElementById('editModal').classList.remove('active');
+    document.getElementById('confirmStep1').classList.remove('active');
+    document.getElementById('confirmStep2').classList.remove('active');
+    document.getElementById('browseScreen').classList.remove('hidden');
+    document.getElementById('historyScreen').classList.remove('active');
+    document.getElementById('toastContainer').innerHTML = '';
+
+    switch(n) {
+      case 0: // Browse
+        break;
+      case 1: // Edit modal
+        document.getElementById('editModal').classList.add('active');
+        break;
+      case 2: // Step 1 confirm
+        document.getElementById('editModal').classList.add('active');
+        document.getElementById('confirmStep1').classList.add('active');
+        break;
+      case 3: // Step 2 confirm
+        document.getElementById('editModal').classList.add('active');
+        document.getElementById('confirmStep2').classList.add('active');
+        break;
+      case 4: // Toast
+        document.getElementById('editModal').classList.add('active');
+        setTimeout(() => showToast(), 100);
+        break;
+      case 5: // History
+        document.getElementById('browseScreen').classList.add('hidden');
+        document.getElementById('historyScreen').classList.add('active');
+        break;
+    }
+  }
+
+  function nextStep() { setStep(Math.min(currentStep + 1, 5)); }
+  function prevStep() { setStep(Math.max(currentStep - 1, 0)); }
+
+  // ===== Modal Controls =====
+  function openEditModal() { setStep(1); }
+  function closeEditModal() { setStep(0); }
+
+  function openStep1() { setStep(2); }
+  function closeStep1() { setStep(1); }
+
+  function openStep2() { setStep(3); }
+  function closeStep2() { setStep(1); }
+
+  function finalSave() {
+    const btn = document.getElementById('finalSaveBtn');
+    btn.textContent = '保存中...';
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+
+    setTimeout(() => {
+      btn.textContent = '最终确认保存 ✓';
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      setStep(4);
+    }, 800);
+  }
+
+  // ===== Toast =====
+  function showToast() {
+    const container = document.getElementById('toastContainer');
+    const toast = document.createElement('div');
+    toast.className = 'toast slide-up';
+    toast.innerHTML = `
+      <div class="toast-title">✅ 保存成功</div>
+      <div class="toast-message">
+        新版本 <strong>E202606261228-V1</strong>（版本1）已创建<br>
+        原始数据 E202606261228 保持不变
+      </div>
+      <div class="toast-link" onclick="setStep(5); document.getElementById('toastContainer').innerHTML='';">查看变更历史 →</div>
+    `;
+    container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 5000);
+  }
+
+  // ===== History =====
+  function showHistory() { setStep(5); }
+  function hideHistory() { setStep(0); }
+
+  function toggleDetail(btn) {
+    const panel = btn.nextElementSibling;
+    const arrow = btn.querySelector('.expand-arrow');
+    panel.classList.toggle('show');
+    arrow.textContent = panel.classList.contains('show') ? '▲' : '▼';
+    btn.childNodes[0].textContent = panel.classList.contains('show') ? '收起详情 ' : '展开详情 ';
+  }
+
+  // ===== Field Modification Detection =====
+  function checkModified(el) {
+    const group = el.closest('.form-group');
+    const original = el.dataset.original || '';
+    const current = el.value || '';
+    if (current !== original) {
+      group.classList.add('modified');
+    } else {
+      group.classList.remove('modified');
+    }
+    updateModifiedCount();
+  }
+
+  function updateModifiedCount() {
+    const count = document.querySelectorAll('.form-group.modified').length;
+    document.getElementById('modifiedCount').textContent = count;
+  }
+
+  // Init
+  updateModifiedCount();
+</script>
+</body>
+</html>

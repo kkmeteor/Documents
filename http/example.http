@@ -1,0 +1,105 @@
+### 1. 加载默认配置（load-default）
+### 根据配置名称从 SampleConfig 目录加载床位配置文件
+POST http://localhost:5000/api/load-default
+Content-Type: application/json
+
+{
+  "ConfigName": "sample_6beds"
+}
+
+
+### 2. 加载用户自定义配置（load-by-user）
+### 传入自定义 JSON 配置文件的完整路径，程序读取并加载到页面
+POST http://localhost:5000/api/load-by-user
+Content-Type: application/json
+
+{
+  "FilePath": "D:\\BedsConfig\\user_defined1.json"
+}
+加载配置之后可以显示在UI上。
+
+### 3. 直接传入床位配置（load-config）
+### 将合法的床位配置 JSON 数据直接放在请求体中传递，无需指定文件路径
+POST http://localhost:5000/api/load-config
+Content-Type: application/json
+
+{
+  "BedCount": 3,
+  "StaFolderPath": "D:\\S2From真机导出\\E202605071749_PETWBRAW_3_20260507175822",
+  "Beds": [
+    {
+      "Id": 1,
+      "Name": "Head",
+      "Type": 8,
+      "FilePath": "D:\\S2From真机导出\\E202605071749_PETWBRAW_3_20260507175822\\ListMode_BedPosition1",
+      "IsEnabled": true,
+      "Metadata": {}
+    },
+    {
+      "Id": 2,
+      "Name": "Neck",
+      "Type": 8,
+      "FilePath": "D:\\S2From真机导出\\E202605071749_PETWBRAW_3_20260507175822\\ListMode_BedPosition2",
+      "IsEnabled": true,
+      "Metadata": {}
+    },
+    {
+      "Id": 3,
+      "Name": "Chest",
+      "Type": 8,
+      "FilePath": "D:\\S2From真机导出\\E202605071749_PETWBRAW_3_20260507175822\\ListMode_BedPosition3",
+      "IsEnabled": true,
+      "Metadata": {}
+    }
+  ]
+}
+
+
+### 4. 更新病人信息（patient-info）
+### 动态更新当前绑定的病人信息，支持部分字段更新
+POST http://localhost:5000/api/patient-info
+Content-Type: application/json
+
+{
+  "PatientName": "张三",
+  "PatientId": "P20240518001",
+  "AccessionNumber": "ACC-20240518-001",
+  "PatientBirthDate": "1985-06-15T00:00:00",
+  "PatientSex": "M",
+  "PatientHeight": 175.0,
+  "PatientWeight": 70.5,
+  "BloodGlucose": 5.2,
+  "StudyDateTime": "2024-05-18T09:30:00",
+  "RequestingPhysicianName": "李医生",
+  "OperatorName": "王技师",
+  "ProcedureDescription": "全身PET-CT扫描",
+  "PatientPosition": "HeadFirst-Supine",
+  "NuclideName": "F-18",
+  "TracerName": "FDG",
+  "TracerMeasureTime": "2024-05-18T08:00:00",
+  "TracerMeasureActivity": 12.5,
+  "TracerEmptyNeedleMeasureTime": "2024-05-18T07:55:00",
+  "TracerEmptyNeedleMeasureActivity": 0.5,
+  "InjectionTime": "2024-05-18T08:15:00",
+  "TracerDose": 8.2,
+  "InjectionDate": "2024-05-18T00:00:00"
+}
+
+### 5. 通道控制（channels）
+### operation="open" 模拟点击 Open channels，UI上Open按钮隐藏、Close按钮显示
+### operation="close" 模拟点击 Close channels，UI上Close按钮隐藏、Open按钮显示
+POST http://localhost:5000/api/channels
+Content-Type: application/json
+
+{
+  "operation": "open"
+}
+
+
+### 6. 通道控制 - 关闭（channels）
+POST http://localhost:5000/api/channels
+Content-Type: application/json
+
+{
+  "operation": "close"
+}
