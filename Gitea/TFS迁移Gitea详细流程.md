@@ -74,9 +74,9 @@ choco install gittfs
 mkdir tfs-migration
 cd tfs-migration
 
-# 执行克隆（首次运行会下载所有 changeset，耗时较长）
+# 执行克隆（首次运行会下载所有 changeset，耗时较长,注意 网络路径 需要加引号）
 git tfs clone http://your-tfs-server:8080/tfs/DefaultCollection ^
-    $/Project/Main ^
+    "$/Project/Main" ^     
     --with-branches ^
     --username=DOMAIN\username ^
     --authors=authors.txt
