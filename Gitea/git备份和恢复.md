@@ -10,7 +10,7 @@
 # 第一部分：Linux 服务器打包备份（可直接逐条复制）
 ## 1. 执行备份（解决根目录权限报错）
 ```bash
-sudo docker exec -u git gitea gitea dump -c /data/gitea/conf/app.ini --output /data/gitea/gitea-dump.zip
+sudo docker exec -u git gitea gitea dump -c /data/gitea/gitea/conf/app.ini --output /data/gitea/gitea-dump.zip
 ```
 
 ## 2. 将备份文件从容器复制到 Linux 宿主机家目录
