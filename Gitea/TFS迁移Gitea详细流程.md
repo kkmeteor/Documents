@@ -74,12 +74,19 @@ choco install gittfs
 mkdir tfs-migration
 cd tfs-migration
 
-# 执行克隆（首次运行会下载所有 changeset，耗时较长）
+# 执行克隆（首次运行会下载所有 changeset，耗时较长,注意 网络路径 需要加引号）
 git tfs clone http://your-tfs-server:8080/tfs/DefaultCollection ^
-    $/Project/Main ^
-    --with-branches ^
-    --username=DOMAIN\username ^
+    "$/Project/Main" `     
+    --with-branches `
+    --username=DOMAIN\username `
     --authors=authors.txt
+
+# 路径加英文引号、规范账号、兼容解析，以下是一个具体的例子
+# 有时候使用--with-branches无法拉取所有关联的分支，可以使用--branches=all 配合--from=12755来进行尽可能多的关联分支
+git tfs clone http://10.10.10.63:8080/tfs/DefaultCollection `
+    "$/18F Dicom Viewer/SinoIVSDK-2DViewer" `
+    --branches=all --from=12755 `
+    --username tengfei.ma@sinogram
 ```
 
 **参数说明**：
@@ -87,6 +94,8 @@ git tfs clone http://your-tfs-server:8080/tfs/DefaultCollection ^
 | 参数 | 作用 |
 |------|------|
 | `--with-branches` | 自动发现并克隆所有关联的 TFS 子分支，保留分支创建和合并的历史关系 |
+| `--branches=all` | 尽可能多的自动发现并克隆所有关联的 TFS 子分支，保留分支创建和合并的历史关系 |
+| `--from=12755` | 指定从某个changeset开始迁移 |
 | `--username` | TFS 认证账号，格式为 `DOMAIN\username` 或 `username@domain` |
 | `--authors` | 可选，指定作者映射文件，将 TFS 账号映射为 Git 的 `Name <email>` 格式 |
 
@@ -166,6 +175,8 @@ git checkout main
 ```bash
 # 删除 git-tfs 的远程引用（迁移完成后不再需要）
 git remote remove tfs
+# 如果以上命令不好使，可以根据具体的分支命名进行尝试：
+git for-each-ref --format='%(refname)' refs/remotes/tfs/ | ForEach-Object { git update-ref -d $_ }
 
 # 验证本地分支列表
 git branch -a
@@ -222,7 +233,7 @@ git commit -m "chore: add .gitignore for Git workflow"
 
 ```bash
 # 添加 Gitea 远程仓库
-git remote add origin http://testmachine:3000/sinounion/PET-CT.git
+git remote add origin http://10.10.11.52:3000/Organization/XXX.git
 
 # 推送所有本地分支
 git push origin --all
