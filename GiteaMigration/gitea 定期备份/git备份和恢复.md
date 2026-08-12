@@ -1,8 +1,8 @@
 # Linux Docker Gitea 1.22.3 迁移 Windows Docker Desktop 完整操作手册
 ## 前置硬性约束
 1. Linux Gitea 版本：1.22.3，Windows 必须严格同版本 `gitea/gitea:1.22.3`
-2. 数据库：SQLite 或 MySQL（按实际环境选择对应恢复方式）
-3. Windows 路径要求：全程无中文、无空格，示例使用 `E:\gitea-local`
+2. 数据库：SQLite（本次环境），无需手动导入SQL文件
+3. Windows 路径要求：全程无中文、无空格，示例使用 `D:\gitea-local`
 4. Docker Desktop 必须完整启动，右下角托盘为绿色运行状态
 
 ---
@@ -10,7 +10,7 @@
 # 第一部分：Linux 服务器打包备份（可直接逐条复制）
 ## 1. 执行备份（解决根目录权限报错）
 ```bash
-sudo docker exec -u git gitea gitea dump -c /data/gitea/gitea/conf/app.ini --output /data/gitea/gitea-dump.zip
+sudo docker exec -u git gitea gitea dump --config /data/gitea/conf/app.ini --file /data/gitea/gitea-dump.zip
 ```
 
 ## 2. 将备份文件从容器复制到 Linux 宿主机家目录
@@ -25,6 +25,10 @@ sudo docker exec gitea rm /data/gitea/gitea-dump.zip
 
 ## 4. 操作说明
 将 Linux 家目录下的 `gitea-dump.zip` 通过 SFTP/网盘 下载到 Windows 本地。
+该文件默认的所有者是root，如果使用域账户SSH 登陆了linux机器，需要将文件所有权转移到当前登陆用户名下：
+```bash
+sudo chown yourdomainname@sinogram.cn:domain\ users@sinogram.cn ~/gitea-dump.zip
+```
 
 ---
 
@@ -41,21 +45,21 @@ docker run --rm gitea/gitea:1.22.3 gitea --version
 输出必须包含：`Gitea version 1.22.3`
 
 ## 3. Windows 创建本地空目录
-手动新建文件夹：`E:\gitea-local`
-将下载的 `gitea-dump.zip` 解压到 Windows 临时文件夹，解压后典型内容：
-`app.ini`、`data`、`repos`、`gitea-db.sql`（可能还有 `custom`，视原始配置而定）
+手动新建文件夹：`D:\gitea-local`
+将下载的 `gitea-dump.zip` 解压到 Windows 临时文件夹，解压目录包含：
+`app.ini`、`data`、`repos`、`custom`、`gitea-db.sql`
 
 ## 4. 临时启动空容器生成目录结构
 ```powershell
 docker run -d `
 --name gitea `
 -p 3000:3000 -p 2222:22 `
--v E:/gitea-local:/data `
+-v D:/gitea-local:/data `
 -e TZ=Asia/Shanghai `
 gitea/gitea:1.22.3
 ```
 
-## 5. 等待10秒，停止并删除容器（只删容器，保留E盘文件夹）
+## 5. 等待10秒，停止并删除容器（只删容器，保留D盘文件夹）
 ```powershell
 docker stop gitea
 docker rm gitea
@@ -65,27 +69,16 @@ docker rm gitea
 
 # 第三部分：覆盖备份文件 + 修改配置
 ## 1. 文件覆盖对照表（手动复制粘贴）
-| 解压文件路径 | Windows 目标路径 | 说明 |
-| ---- | ---- | ---- |
-| 解压包/app.ini | E:\gitea-local\gitea\conf\app.ini | 主配置文件 |
-| 解压包/repos/* | E:\gitea-local\gitea-repositories\ | Git 裸仓库数据 |
-| 解压包/data/* | E:\gitea-local\gitea\ | 运行时数据（avatars/lfs/sessions等，直接覆盖合并） |
-| 解压包/custom/*（如有） | E:\gitea-local\custom\ | 自定义模板/配置，无则跳过 |
+| 解压文件路径 | Windows 目标路径 |
+| ---- | ---- |
+| 解压包/app.ini | D:\gitea-local\conf\app.ini |
+| 解压包/repos/* | D:\gitea-local\gitea-repositories\ |
+| 解压包/data/* | D:\gitea-local\ |
+| 解压包/custom/* | D:\gitea-local\custom\ |
 
-### 数据库恢复（按类型二选一）
+> SQLite 不需要使用 `gitea-db.sql`，data目录已包含完整数据库
 
-**SQLite 用户**：data 目录中包含 `gitea.db` 数据库文件，复制到 `E:\gitea-local\gitea\` 即可，无需导入 `gitea-db.sql`。
-
-**MySQL 用户**：data 目录仅含 avatars/lfs/sessions 等运行时文件，不含数据库。`gitea-db.sql` 必须导入到目标 MySQL 数据库：
-```powershell
-# 1. 确保 MySQL 已创建目标数据库（如 gitea）
-# 2. 将 SQL 文件导入 MySQL（假设 MySQL 容器名为 mysql）
-docker cp gitea-db.sql mysql:/tmp/gitea-db.sql
-docker exec -i mysql mysql -u root -p<密码> gitea < gitea-db.sql
-```
-> 导入完成后，确认 app.ini 中 `[database]` 段的 DB_TYPE、HOST、NAME、USER、PASSWORD 指向正确的 MySQL 实例。
-
-## 2. 修改 E:\gitea-local\gitea\conf\app.ini 关键配置
+## 2. 修改 D:\gitea-local\conf\app.ini 关键配置
 打开文件，找到并替换以下内容：
 ```ini
 ROOT_URL = http://localhost:3000/
@@ -102,7 +95,7 @@ SSH_BASE_URL = localhost:2222
 docker run -d `
 --name gitea `
 -p 3000:3000 -p 2222:22 `
--v E:/gitea-local:/data `
+-v D:/gitea-local:/data `
 -e TZ=Asia/Shanghai `
 gitea/gitea:1.22.3
 ```
@@ -134,4 +127,4 @@ docker exec -u git gitea gitea admin repo check --all
 2. 仓库404：repos文件夹未完整拷贝到gitea-repositories
 3. SSH拉取失败：确认SSH_BASE_URL=localhost:2222
 4. Docker管道报错：重启Docker Desktop，等待绿色就绪再执行docker命令
-5. Windows路径报错：禁止使用中文/桌面路径，统一使用E盘英文目录
+5. Windows路径报错：禁止使用中文/桌面路径，统一使用D盘英文目录
