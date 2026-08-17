@@ -19,3 +19,30 @@ Content-Type: application/json
     "EndDate": "2026-05-31"
 }
 ###
+
+# 1. initialize 握手
+curl -X POST http://10.10.11.194:8808/mcp \
+-H "Content-Type: application/json" \
+-H "Accept: application/json, text/event-stream" \
+-d '{
+  "jsonrpc":"2.0",
+  "id":0,
+  "method":"initialize",
+  "params": {
+    "protocolVersion": "0.1.0",
+    "capabilities": {},
+    "clientInfo": {"name":"test-client","version":"1.0"}
+  }
+}'
+
+###
+# 2. 再获取工具列表
+curl -X POST http://10.10.11.194:8808/mcp \
+-H "Content-Type: application/json" \
+-H "Accept: application/json, text/event-stream" \
+-d '{
+  "jsonrpc":"2.0",
+  "id":1,
+  "method":"tools/list",
+  "params":{}
+}'

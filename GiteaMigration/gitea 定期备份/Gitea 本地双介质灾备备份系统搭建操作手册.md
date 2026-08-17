@@ -147,26 +147,40 @@ sudo chmod 755 /mnt/archive_hdd/gitea_backup
 
 ```Plain Text
 #!/bin/bash
-# Gitea全自动灾备备份脚本 定稿版
+# Gitea 自动备份脚本｜修复套娃终极版本
 DATE=$(date +%Y%m%d)
 BACKUP_NAME="gitea-daily-backup-${DATE}.zip"
 
-# 容器内备份路径、宿主机本地备份路径
-IN_CONTAINER_PATH="/data/gitea/${BACKUP_NAME}"
-LOCAL_BACKUP_FILE="/data/gitea/gitea/${BACKUP_NAME}"
+# 【容器临时路径：不放在/data/gitea，杜绝套娃】
+CONTAINER_TMP_FILE="/tmp/${BACKUP_NAME}"
+# 宿主机存放临时备份目录（不要使用/data/gitea/gitea）
+TMP_BACKUP_ROOT="/data/gitea_backup_tmp"
+LOCAL_BACKUP_FILE="${TMP_BACKUP_ROOT}/${BACKUP_NAME}"
 
-# 独立机械硬盘归档备份目录
+# 独立机械硬盘归档目录
 ARCHIVE_DIR="/mnt/archive_hdd/gitea_backup"
+mkdir -p "${TMP_BACKUP_ROOT}"
 mkdir -p "${ARCHIVE_DIR}"
 
 echo "====================================="
 echo "开始执行 Gitea dump 备份：${BACKUP_NAME}"
 echo "====================================="
 
-# 1.容器内执行Gitea全量备份
-/usr/bin/docker exec -u git gitea gitea dump -c /data/gitea/conf/app.ini --skip-repository=false -f "${IN_CONTAINER_PATH}"
+# 清理上次残留临时文件
+rm -f "${LOCAL_BACKUP_FILE}"
 
-# 2.校验备份文件是否生成成功，失败则退出
+# 1.执行Gitea备份，输出到容器 /tmp
+/usr/bin/docker exec -u git gitea gitea dump \
+-c /data/gitea/conf/app.ini \
+--skip-repository=false \
+-f "${CONTAINER_TMP_FILE}"
+
+# 2.从容器拷贝备份文件到宿主机独立目录
+docker cp gitea:"${CONTAINER_TMP_FILE}" "${LOCAL_BACKUP_FILE}"
+# 删除容器内临时文件
+docker exec -u git gitea rm -f "${CONTAINER_TMP_FILE}"
+
+# 3.校验备份文件是否正常生成
 if [ ! -f "${LOCAL_BACKUP_FILE}" ];then
     echo "❌ ERROR：备份文件生成失败，文件不存在：${LOCAL_BACKUP_FILE}"
     exit 1
@@ -174,19 +188,29 @@ fi
 
 echo "✅ 本地备份文件生成完成，准备复制至归档硬盘"
 
-# 3.同步备份文件至独立机械硬盘（灾备副本）
+# 4.复制备份到机械硬盘归档目录
 cp "${LOCAL_BACKUP_FILE}" "${ARCHIVE_DIR}/"
+if [ $? -ne 0 ]; then
+    echo "❌ ERROR：拷贝至归档硬盘失败，终止脚本，不执行清理！"
+    exit 1
+fi
+# 统一增加读权限，方便日常校验
+chmod ugo+r "${ARCHIVE_DIR}/${BACKUP_NAME}"
 
-# 4.自动过期清理策略
-# 本地系统盘：保留最近1天备份
-find /data/gitea/gitea -maxdepth 1 -name "gitea-daily-backup-*.zip" -mtime +1 -delete
-# 机械硬盘归档盘：保留最近10天备份
-find "${ARCHIVE_DIR}" -name "gitea-daily-backup-*.zip" -mtime +10 -delete
+# 5.清理策略
+# 宿主机临时备份目录：保留最近2天
+echo "【清理】清理宿主机临时过期备份"
+find "${TMP_BACKUP_ROOT}" -maxdepth 1 -type f -name "gitea-daily-backup-*.zip" -mtime +1 -print -delete
+
+# 机械硬盘归档备份：保留10天
+echo "【清理】清理归档硬盘过期备份"
+find "${ARCHIVE_DIR}" -maxdepth 1 -type f -name "gitea-daily-backup-*.zip" -mtime +10 -print -delete
 
 echo "✅ 全部任务完成！"
-echo "本地热备路径：${LOCAL_BACKUP_FILE}"
-echo "归档灾备路径：${ARCHIVE_DIR}/${BACKUP_NAME}"
+echo "临时路径：${LOCAL_BACKUP_FILE}"
+echo "归档路径：${ARCHIVE_DIR}/${BACKUP_NAME}"
 echo "====================================="
+
 ```
 
 ### 4\.2 赋予脚本执行权限
@@ -205,7 +229,7 @@ sudo bash /opt/gitea_backup.sh
 
 ```Plain Text
 # 查看本地热备文件
-ls -l /data/gitea/gitea/gitea-daily-backup*.zip
+ls -l /data/gitea_backup_tmp/gitea-daily-backup*.zip
 # 查看机械硬盘灾备文件
 ls -l /mnt/archive_hdd/gitea_backup/gitea-daily-backup*.zip
 ```
