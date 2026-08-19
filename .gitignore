@@ -12,3 +12,6 @@ Desktop.ini
 
 # Binary / generated files
 *.log
+
+# exclude backup files
+bak/
