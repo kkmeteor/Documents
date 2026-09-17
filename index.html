@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>kkmeteor | 个人技术空间</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Segoe UI", system-ui, sans-serif;
+        }
+        body {
+            background-color: #111827;
+            color: #e5e7eb;
+            line-height: 1.6;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        header {
+            border-bottom: 1px solid #374151;
+            padding-bottom: 24px;
+            margin-bottom: 32px;
+        }
+        h1 {
+            font-size: 2.2rem;
+            color: #38bdf8;
+            margin-bottom: 8px;
+        }
+        .subtitle {
+            color: #9ca3af;
+            font-size: 1.05rem;
+        }
+        section {
+            margin-bottom: 36px;
+        }
+        h2 {
+            font-size: 1.4rem;
+            color: #60a5fa;
+            margin-bottom: 16px;
+            border-left: 4px solid #38bdf8;
+            padding-left:12px;
+        }
+        ul {
+            padding-left: 24px;
+            color:#d1d5db;
+        }
+        li {
+            margin: 8px 0;
+        }
+        .tech-stack {
+            display: flex;
+            flex-wrap: wrap;
+            gap:10px;
+            margin-top:12px;
+        }
+        .tag {
+            background:#1e293b;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size:0.9rem;
+            color:#7dd3fc;
+        }
+        footer {
+            margin-top:60px;
+            padding-top:20px;
+            border-top:1px solid #374151;
+            color:#6b7280;
+            font-size:0.9rem;
+        }
+        a {
+            color:#38bdf8;
+            text-decoration:none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>kkmeteor</h1>
+            <p class="subtitle">个人技术空间 · 后端 / 工程化 / 系统开发笔记</p>
+        </header>
+
+        <section>
+            <h2>关于我</h2>
+            <p>专注后端开发、桌面上位机系统、容器与自动化运维。记录踩坑笔记、代码片段、方案总结，用于沉淀技术，方便随时查阅。</p>
+        </section>
+
+        <section>
+            <h2>技术栈</h2>
+            <div class="tech-stack">
+                <span class="tag">C# .NET</span>
+                <span class="tag">Python</span>
+                <span class="tag">WPF</span>
+                <span class="tag">Docker</span>
+                <span class="tag">K8s</span>
+                <span class="tag">PowerShell</span>
+                <span class="tag">DICOM</span>
+                <span class="tag">Web</span>
+            </div>
+        </section>
+
+        <section>
+            <h2>笔记分类</h2>
+            <ul>
+                <li>.NET项目迁移、SDK风格改造、WPF项目坑点</li>
+                <li>Windows运维、进程权限、脚本、网络排查</li>
+                <li>容器、CI/CD、自动化部署</li>
+                <li>图像与医疗相关开发笔记</li>
+                <li>零散算法、数学、杂项学习记录</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>链接</h2>
+            <ul>
+                <li><a href="#">Github</a></li>
+                <li><a href="#">技术博客</a></li>
+            </ul>
+        </section>
+
+        <footer>
+            © 2026 kkmeteor | 静态页面，可直接部署到 Nginx / GitHub Pages / 对象存储
+        </footer>
+    </div>
+</body>
+</html>
